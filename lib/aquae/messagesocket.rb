@@ -1,26 +1,38 @@
+require_relative 'protos/transport.pb.rb'
+require_relative 'protos/messaging.pb.rb'
+
 module Aquae
   class MessageSocket
-    # Wraps a FramingSocket and performs de/serialisation of messages
+    # Wraps an EncapsulationSocket and performs de/serialisation of messages
 
-    def initialize message_type, framing_socket
-      # @param MessageType [Class] The type of Protobuf message to try and deserialise
-      # @param framing_socket [FramingSocket] An open socket which returns one message per call to read
-      @Type = message_type
-      @socket = framing_socket
+    def initialize encapsulation_socket
+      # @param encapsulation_socket [EncapsulationSocket]
+      #   An open socket which returns one message per call to read
+      @socket = encapsulation_socket
     end
 
     def write message
-      unless message.is_a? @Type
-        raise TypeError.new "Message of type #{message.class} passed, expecting #{@Type}"
+      unless TYPES.value? message.class
+        raise TypeError.new "Unrecognised message of type #{message.class} passed"
       end
 
-      @socket.write @Type.encode message
+      type = TYPES.invert[message.class]
+      @socket.write type, message.encode
     end
 
     def read
-      @Type.decode @socket.read
+      type, payload = @socket.read
+      ruby_type = TYPES[type]
+      ruby_type.decode payload
     rescue Protobuf::Error
       # TODO: log error? or send it upwards?
     end
+
+    # Pre-compute the mapping of enum to supported message types
+    TYPES = Aquae::Encapsulation::Header::Type.enums.map do |enum|
+      typename = enum.name.to_s.downcase.split('_').map(&:capitalize).join
+      type = Aquae::Messaging.const_get typename
+      [enum, type]
+    end.to_h
   end
 end
