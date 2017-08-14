@@ -28,6 +28,10 @@ module Aquae
       # TODO: log error? or send it upwards?
     end
 
+    def close
+      @socket.close
+    end
+
     # Pre-compute the mapping of enum to supported message types
     TYPES = Aquae::Encapsulation::Header::Type.enums.map do |enum|
       typename = enum.name.to_s.downcase.split('_').map(&:capitalize).join

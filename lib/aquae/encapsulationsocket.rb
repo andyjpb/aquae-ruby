@@ -21,5 +21,9 @@ module Aquae
       @framer.write header.encode
       @socket.write payload
     end
+
+    def close
+      @socket.close
+    end
   end
 end
