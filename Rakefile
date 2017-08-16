@@ -1,4 +1,5 @@
 require "bundler/gem_tasks"
+Rake.add_rakelib './tasks'
 
 WINDOWS = (/cygwin|mswin|mingw|bccwin|wince|emx/ =~ RUBY_PLATFORM) != nil
 PROTOC_PLUGIN_PATH = File.join Gem.bindir, "protoc-gen-ruby#{if WINDOWS then '.bat' else '' end}"
