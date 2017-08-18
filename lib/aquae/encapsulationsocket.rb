@@ -20,6 +20,7 @@ module Aquae
       header = Encapsulation::Header.new type: type, length: payload.size
       @framer.write header.encode
       @socket.write payload
+      @socket.flush
     end
 
     def close
