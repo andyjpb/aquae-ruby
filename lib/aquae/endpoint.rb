@@ -1,4 +1,6 @@
 require 'openssl'
+require_relative 'messagesocket'
+require_relative 'encapsulationsocket'
 
 module Aquae
   class Endpoint
