@@ -1,0 +1,95 @@
+#!/usr/bin/env ruby
+require_relative '../lib/aquae/endpoint'
+require_relative '../lib/aquae/protos/metadata.pb'
+Recoverable = Class.new StandardError
+
+USAGE = """Usage: #{$0} node_name metadata_file key_file [-- command -- command ...]
+Send or receive messages to an Aquae node.
+
+node_name: \tThe name of this node in the metadata
+metadata_file: \tThe file to load as Aquae metadata
+key_file: \tThe private key for the node specified by node_name
+command: \tRun the command specified after the -- with the given arguments
+
+If no commands are specified, an interactive prompt is established
+which will evaluate commands on demand.
+
+Commands:
+print: Accept all messages and print them out
+send <node-name> <expression>: Send a message to <node-name>.
+  The <expression> is evaluated as Ruby code and should return an Aquae message.
+receive <node-name>: Wait for and print out a message from <node-name>.
+exit: Quit the application.
+
+Example:
+  #{$0} node1 ../my.metadata ./my.key.der -- send node2 SignedQuery.new() -- receive node2
+"""
+
+node_name, metadata_file, key_file, *commands = ARGV
+if node_name.nil? or metadata_file.nil? or key_file.nil?
+  STDERR.puts USAGE
+  return 1
+end
+
+metadata = Aquae::Metadata::Metadata.decode File.binread metadata_file
+key = File.binread key_file
+endpoint = Aquae::Endpoint.new metadata, key, node_name
+
+# Read commands from STDIN with a basic prompt
+def take_from_stdin
+  STDOUT.write '> '
+  Enumerator::Lazy.new(STDIN.each_line) do |yielder, *values|
+    values.map(&yielder.method(:<<))
+    STDOUT.write '> '
+  end.map(&:chomp).map(&:split)
+end
+
+# Read commands from the command line
+def take_from_array commands
+  commands.slice_when {|i,j| i == '--'}.map {|a| a.reject {|e| e == '--'}}.reject(&:empty?)
+end
+
+# Closure proc to connect to a node by name
+connect_to = proc do |node_name|
+  node = metadata.node.find {|n| n.name == node_name}
+  if node.nil?
+    raise Recoverable.new "No node with name #{node_name}"
+  else
+    STDERR.puts "Connecting to #{node.name}..."
+    endpoint.connect_to node
+  end
+end
+
+# If user didn't specify any commands, read from STDIN
+commands = commands.empty? ? take_from_stdin : take_from_array(commands)
+sockets = Hash.new {|h, name| h[name] = connect_to.call name}
+
+include Aquae::Messaging
+commands.each do |command|
+  verb, *args = command
+  begin
+    case verb
+    when 'print'
+      endpoint.accept_messages {|s| loop { puts socket.read.inspect } }
+    when 'send'
+      node_name = args.shift
+      sockets[node_name].write eval args.join ' '
+    when 'receive'
+      node_name = args.shift
+      begin
+        puts sockets[node_name].read.inspect
+      rescue EOFError => e
+        sockets.delete node_name
+        STDERR.puts "#{node_name}: Connection closed: #{e.message}"
+      end
+    when 'exit'
+      break
+    when nil
+      # pass
+    else
+      puts "What is #{verb}?"
+    end
+  rescue Recoverable => exception
+    STDERR.puts exception.message
+  end
+end
