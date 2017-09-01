@@ -33,7 +33,7 @@ module Aquae
     end
 
     # Pre-compute the mapping of enum to supported message types
-    TYPES = Aquae::Encapsulation::Header::Type.enums.map do |enum|
+    TYPES = Aquae::Transport::Header::Type.enums.map do |enum|
       typename = enum.name.to_s.downcase.split('_').map(&:capitalize).join
       type = Aquae::Messaging.const_get typename
       [enum, type]

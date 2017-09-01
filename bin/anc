@@ -31,7 +31,7 @@ if node_name.nil? or metadata_file.nil? or key_file.nil?
   return 1
 end
 
-metadata = Aquae::Metadata::Metadata.decode File.binread metadata_file
+metadata = Aquae::Metadata::Federation.decode File.binread metadata_file
 key = File.binread key_file
 endpoint = Aquae::Endpoint.new metadata, key, node_name
 

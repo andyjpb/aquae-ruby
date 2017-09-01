@@ -11,13 +11,13 @@ module Aquae
     end
 
     def read
-      header = Encapsulation::Header.decode @framer.read
+      header = Transport::Header.decode @framer.read
       payload = @socket.read header.length
       [header.type, payload]
     end
 
     def write type, payload
-      header = Encapsulation::Header.new type: type, length: payload.size
+      header = Transport::Header.new type: type, length: payload.size
       @framer.write header.encode
       @socket.write payload
       @socket.flush
