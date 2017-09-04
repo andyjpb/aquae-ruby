@@ -11,8 +11,8 @@ module Aquae
       metadata = metadata
       node = metadata.node.find {|n| n.name == this_node }
       tcp_server = TCPServer.new node.location.hostname, node.location.port_number
-      @context = Endpoint::make_context node, key, metadata
-      @ssl_server = OpenSSL::SSL::SSLServer.new tcp_server, @context
+      #@context = Endpoint::make_context node, key, metadata
+      #@ssl_server = OpenSSL::SSL::SSLServer.new tcp_server, @context
     end
 
     def self.make_context node, key, metadata
@@ -39,16 +39,16 @@ module Aquae
     def accept_messages
       raise ArgumentError.new("no block given") unless block_given?
       loop do
-        socket = Endpoint::make_socket @ssl_server.accept
+        socket = Endpoint::make_socket @tcp_server.accept
         yield socket
       end
     end
 
     def connect_to node
       tcp_socket = TCPSocket.new node.location.hostname, node.location.port_number
-      ssl_socket = OpenSSL::SSL::SSLSocket.new tcp_socket, @context
-      ssl_socket.sync_close = true
-      Endpoint::make_socket ssl_socket.connect
+      #ssl_socket = OpenSSL::SSL::SSLSocket.new tcp_socket, @context
+      #tcp_socket.sync_close = true
+      Endpoint::make_socket tcp_socket
     end
 
     def nodes=
